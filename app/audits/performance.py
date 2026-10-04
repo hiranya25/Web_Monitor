@@ -26,6 +26,9 @@ def run(pages: list[PageRecord]) -> list[Issue]:
     for page in pages:
         if page.error or (page.status_code and page.status_code >= 400):
             continue
+        # Page-speed thresholds don't apply to downloadable files such as PDFs.
+        if page.is_non_html_document:
+            continue
 
         # --- Response time ---
         if page.response_time_ms >= RESPONSE_TIME_CRITICAL_MS:

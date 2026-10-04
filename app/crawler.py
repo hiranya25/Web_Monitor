@@ -45,6 +45,17 @@ def _normalize(base: str, link: str) -> str | None:
         return None
     return absolute
 
+_FILE_EXTENSIONS = (
+    ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".csv", ".ppt", ".pptx", ".zip",
+    ".jpg", ".jpeg", ".png", ".gif", ".webp", ".svg", ".mp4", ".mp3",
+)
+
+
+def _looks_like_file(url: str) -> bool:
+    """URLs pointing at downloadable files, which a browser cannot render as a page."""
+    return urlparse(url).path.lower().endswith(_FILE_EXTENSIONS)
+
+
 class WebsiteCrawler:
     def __init__(self, base_url: str | None = None, max_pages: int | None = None, viewport: str = "desktop"):
         self.base_url = (base_url or settings.SITE_BASE_URL).rstrip("/")
@@ -65,17 +76,30 @@ class WebsiteCrawler:
     def _fetch_with_requests(self, url: str) -> PageRecord:
         start = time.perf_counter()
         try:
+            # Stream so non-HTML files (PDFs, archives, ...) are not downloaded in full.
             resp = self.session.get(
-                url, timeout=settings.REQUEST_TIMEOUT, allow_redirects=True
+                url, timeout=settings.REQUEST_TIMEOUT, allow_redirects=True, stream=True
             )
+            content_type = resp.headers.get("Content-Type", "")
+            is_html = "text/html" in content_type
+            if is_html:
+                html = resp.text
+                size_bytes = len(resp.content)
+            else:
+                html = ""
+                try:
+                    size_bytes = int(resp.headers.get("Content-Length") or 0)
+                except ValueError:
+                    size_bytes = 0
+            resp.close()
             elapsed_ms = (time.perf_counter() - start) * 1000
             return PageRecord(
                 url=url,
                 status_code=resp.status_code,
-                content_type=resp.headers.get("Content-Type", ""),
-                html=resp.text if "text/html" in resp.headers.get("Content-Type", "") else "",
+                content_type=content_type,
+                html=html,
                 response_time_ms=round(elapsed_ms, 1),
-                size_bytes=len(resp.content),
+                size_bytes=size_bytes,
                 redirected_from=url if resp.url != url else None,
             )
         except requests.RequestException as exc:
@@ -163,10 +187,15 @@ class WebsiteCrawler:
                 fallback.response_time_ms = round(elapsed_ms, 1)
                 fallback.error = None
                 return fallback
+            if fallback.error is None:
+                # Chromium aborts navigation (net::ERR_ABORTED) for direct file
+                # responses such as PDFs, which open in the viewer / download
+                # instead of loading a DOM. The plain HTTP fetch is the real result.
+                return fallback
             return PageRecord(url=url, response_time_ms=round(elapsed_ms, 1), error=str(exc))
 
     def _fetch(self, url: str) -> PageRecord:
-        if settings.USE_PLAYWRIGHT_FOR_JS:
+        if settings.USE_PLAYWRIGHT_FOR_JS and not _looks_like_file(url):
             return self._fetch_with_playwright(url)
         return self._fetch_with_requests(url)
 
