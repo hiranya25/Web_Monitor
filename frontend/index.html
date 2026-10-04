@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Website Health Monitor — amipi.com</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css?v=2">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar__brand">
+    <svg class="brand-mark" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+      <polygon points="12,1 22,7 22,17 12,23 2,17 2,7" fill="none" stroke="currentColor" stroke-width="1.4"/>
+      <polygon points="12,1 22,7 12,12 2,7" fill="currentColor" opacity="0.18"/>
+      <line x1="12" y1="1" x2="12" y2="23" stroke="currentColor" stroke-width="0.8" opacity="0.5"/>
+      <line x1="2" y1="7" x2="22" y2="17" stroke="currentColor" stroke-width="0.8" opacity="0.5"/>
+      <line x1="22" y1="7" x2="2" y2="17" stroke="currentColor" stroke-width="0.8" opacity="0.5"/>
+    </svg>
+    <div>
+      <div class="brand-name">Website Health Monitor</div>
+      <div class="brand-target" id="siteTarget">amipi.com</div>
+    </div>
+  </div>
+  <div class="topbar__actions">
+    <span class="run-status" id="runStatus" hidden></span>
+    <button class="btn btn--primary" id="runAuditBtn">Run audit now</button>
+  </div>
+</header>
+
+<main class="shell">
+
+  <!-- EMPTY STATE -->
+  <section class="empty-state" id="emptyState">
+    <svg viewBox="0 0 120 104" width="88" height="76" aria-hidden="true" class="empty-facet">
+      <polygon points="60,4 112,34 112,74 60,100 8,74 8,34" fill="none" stroke="currentColor" stroke-width="1.2"/>
+      <polygon points="60,4 112,34 60,52 8,34" fill="currentColor" opacity="0.06"/>
+      <line x1="60" y1="4" x2="60" y2="100" stroke="currentColor" stroke-width="0.7" opacity="0.4"/>
+      <line x1="8" y1="34" x2="112" y2="74" stroke="currentColor" stroke-width="0.7" opacity="0.4"/>
+      <line x1="112" y1="34" x2="8" y2="74" stroke="currentColor" stroke-width="0.7" opacity="0.4"/>
+    </svg>
+    <h1>No scan on record yet</h1>
+    <p>Run the first audit to crawl amipi.com, check links, metadata, ALT tags,<br>SEO fundamentals, and performance — then get an AI-prioritized report.</p>
+    <button class="btn btn--primary btn--lg" id="emptyRunBtn">Run first audit</button>
+  </section>
+
+  <!-- RUNNING STATE -->
+  <section class="running-state" id="runningState" hidden>
+    <div class="pulse-facet">
+      <svg viewBox="0 0 120 104" width="72" height="62" aria-hidden="true">
+        <polygon points="60,4 112,34 112,74 60,100 8,74 8,34" fill="none" stroke="currentColor" stroke-width="1.4"/>
+      </svg>
+    </div>
+    <h2 id="runningLabel">Crawling amipi.com…</h2>
+    <p class="running-sub">This runs through the crawler, then five audit modules, then AI analysis. Usually takes under a minute for a small site.</p>
+    <div class="progress-rail"><div class="progress-fill"></div></div>
+  </section>
+
+  <!-- ERROR STATE -->
+  <section class="error-state" id="errorState" hidden>
+    <h2>Audit didn't complete</h2>
+    <p id="errorMessage">Something went wrong while running the audit.</p>
+    <button class="btn btn--primary" id="retryBtn">Try again</button>
+  </section>
+
+  <!-- REPORT (populated by app.js) -->
+  <section class="report" id="reportSection" hidden>
+
+    <div class="report-actions" id="reportActions" style="display: flex; justify-content: flex-end; gap: 12px; margin-bottom: 24px;">
+      <button class="btn" id="downloadPdfBtn" style="background: var(--bg-raised); border: 1px solid var(--panel-border); color: var(--text-primary); padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 13.5px;">⬇ Download PDF</button>
+      <button class="btn btn--primary" id="emailReportBtn" style="padding: 10px 20px; font-size: 13.5px;">✉ Email Report</button>
+    </div>
+
+    <div class="hero">
+      <div class="hero__score">
+        <svg class="facet-frame" id="facetFrame" viewBox="0 0 200 174" aria-hidden="true">
+          <polygon class="facet-outer" points="100,4 192,58 192,116 100,170 8,116 8,58"/>
+          <polygon class="facet-shine" points="100,4 192,58 100,86 8,58"/>
+          <line class="facet-line" x1="100" y1="4" x2="100" y2="170"/>
+          <line class="facet-line" x1="8" y1="58" x2="192" y2="116"/>
+          <line class="facet-line" x1="192" y1="58" x2="8" y2="116"/>
+        </svg>
+        <div class="hero__score-value">
+          <span class="score-number" id="scoreNumber">—</span>
+          <span class="score-max">/100</span>
+        </div>
+      </div>
+      <div class="hero__body">
+        <span class="eyebrow">Overall health</span>
+        <p class="hero__summary" id="execSummary">—</p>
+        <div class="hero__meta">
+          <span id="lastRun">Last run: —</span>
+          <span class="dot-sep">·</span>
+          <span id="pagesCrawled">0 pages crawled</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="stat-row" id="statRow">
+      <div class="stat-card stat-card--critical">
+        <span class="stat-value" id="statCritical">0</span>
+        <span class="stat-label">Critical</span>
+      </div>
+      <div class="stat-card stat-card--medium">
+        <span class="stat-value" id="statMedium">0</span>
+        <span class="stat-label">Medium</span>
+      </div>
+      <div class="stat-card stat-card--low">
+        <span class="stat-value" id="statLow">0</span>
+        <span class="stat-label">Low</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-value" id="statTotal">0</span>
+        <span class="stat-label">Total issues</span>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2 class="panel__title">Top priorities this week</h2>
+      <ol class="priority-list" id="priorityList"></ol>
+    </div>
+
+    <div class="panel">
+      <div class="panel__header">
+        <h2 class="panel__title">Findings</h2>
+        <div class="tabs" id="categoryTabs">
+          <button class="tab tab--active" data-cat="all">All</button>
+        </div>
+      </div>
+      <table class="findings-table">
+        <thead>
+          <tr><th class="col-sev">Severity</th><th>Page</th><th>Issue</th></tr>
+        </thead>
+        <tbody id="findingsBody"></tbody>
+      </table>
+      <p class="findings-empty" id="findingsEmpty" hidden>No findings in this category. Clean sweep.</p>
+    </div>
+
+  </section>
+
+</main>
+
+<footer class="foot">
+  <span>AI Website Health Monitor</span>
+  <span class="dot-sep">·</span>
+  <a id="docsLink" href="docs" target="_blank" rel="noopener">API docs</a>
+</footer>
+
+<script src="app.js"></script>
+</body>
+</html>
