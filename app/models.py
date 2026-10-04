@@ -22,6 +22,11 @@ class PageRecord:
     error: Optional[str] = None
     resources: list[dict] = field(default_factory=list)  # Network waterfall resources
 
+    @property
+    def is_non_html_document(self) -> bool:
+        """True for a successfully fetched file (PDF, image, ...) rather than a web page."""
+        return bool(self.content_type) and "html" not in self.content_type.lower() and not self.error
+
 
 @dataclass
 class Issue:
